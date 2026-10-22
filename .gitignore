@@ -1,0 +1,12 @@
+build/
+.sputnik/
+sputnik.build.json
+sputnik.toml
+__pycache__/
+test.build.json
+
+out/
+*.dSYM/
+*.sputnikpkg
+*.publish-*.json
+.DS_Store
