@@ -70,7 +70,7 @@ def main():
   caught = false
   try:
     fixture.run(4)
-  rescue rbcall.Error:
+  rescue LocalJumpError:
     caught = true
   check(caught)
   check(fixture.keywords(value: 6, factor: 7) == 42)

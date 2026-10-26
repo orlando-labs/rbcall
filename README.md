@@ -93,8 +93,8 @@ the method name `each`/`map`.
 
 Ruby may retain the block (`&block`) and invoke it later. Sputnik captures are
 rooted until Ruby releases the Proc. A retained block cannot `break` after its
-original Ruby invocation has returned: this produces `rbcall.Error` containing
-Ruby `LocalJumpError`. Calling it cannot attach `break` to a later invocation.
+original Ruby invocation has returned: this raises Sputnik `LocalJumpError`.
+Calling it cannot attach `break` to a later invocation.
 Ruby DSLs that change `self` with `instance_eval` do not rebind Sputnik `self`;
 write an explicit receiver adapter for such DSLs. Foreign callbacks currently
 support positional yield arguments, not keyword yields.
