@@ -33,7 +33,7 @@ python3 configure.py --ruby /path/to/ruby
 ../sputnik-lang/build/sputnik pkg install "$PWD"
 ```
 
-Configuration generates local `sputnik.build.json` and `sputnik.toml`; regenerate
+Configuration generates local one `sputnik.build.yaml`; regenerate
 these for each host/Ruby installation. No Ruby dependency is added to the Sputnik
 compiler. On the development Mac this was tested with CRuby 4.0.5, macOS arm64.
 Linux shared-library layouts are handled by configuration but have not been
@@ -158,3 +158,6 @@ prefix, for example `from slowpilot.rbcall.json import JSON`.
 On macOS the provider/cache and selected interpreter must be on the same
 filesystem. The runtime image is hard-linked so installed native modules use
 the same interpreter instance; no interpreter library bytes are modified.
+
+Configuration prepares local runtime/SDK descriptors and prints the explicit
+`SPUTNIK_NATIVE_PROVIDERS` binding used for builds and package installation.

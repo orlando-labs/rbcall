@@ -13,10 +13,14 @@ p.add_argument('--sputnik', default=os.environ.get('SPUTNIK', str(ROOT.parent / 
 p.add_argument('--mode', choices=['vm', 'native', 'both'], default='both')
 a = p.parse_args()
 compiler = str(Path(a.sputnik).resolve()) if '/' in a.sputnik else a.sputnik
-configuration = ROOT / 'sputnik.build.json'
+configuration = ROOT / 'sputnik.build.yaml'
 if not configuration.exists():
     p.error('run configure.py first')
-base = json.loads(configuration.read_text())
+base = {key: json.loads(value) for key, value in (line.split(': ', 1) for line in configuration.read_text().splitlines())}
+source_root = Path(base.pop('source_root', '.'))
+module_names = base.pop('module_names', {})
+base['modules'] = [dict(name=module_names.get(path, '.'.join(Path(path).relative_to(source_root).with_suffix('').parts)), path=path)
+                   for path in base.pop('files') if Path(path).suffix in ['.s','.spu','.sputnik']]
 for module in base['modules']:
     module['path'] = str(ROOT / module['path'])
 for extension in base['native_extensions']:
@@ -25,6 +29,7 @@ for extension in base['native_extensions']:
 work = ROOT / 'build/tests'
 work.mkdir(parents=True, exist_ok=True)
 env = dict(os.environ)
+env['SPUTNIK_NATIVE_PROVIDERS'] = ':'.join(str(ROOT / 'build/native-providers' / kind) for kind in ['runtime','sdk'])
 env.setdefault('SPUTNIK_NATIVE_RT_CACHE', str(ROOT.parent / 'sputnik-lang/build/interop-runtime-cache'))
 cases = [('smoke', NAME + '.smoke', None),
          ('invalid_handle', NAME + '.invalid_handle', 'destroy')]

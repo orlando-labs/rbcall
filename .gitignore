@@ -1,7 +1,6 @@
 build/
 .sputnik/
-sputnik.build.json
-sputnik.toml
+sputnik.build.yaml
 __pycache__/
 test.build.json
 

@@ -48,7 +48,7 @@ def _unpack(packet):
     packet[1]
 
 def wrap(value): _unpack(_value(_pack(value)))
-def eval(source): _unpack(_eval(source, _dispatch, _encode_callback))
+def eval(source): _unpack(_eval(source, (&_dispatch), (&_encode_callback)))
 def require(path):
   _import(path)
   null
@@ -70,10 +70,10 @@ class Object:
     packed_kwargs = kwargs.entries.map |entry|: [entry[0].to_str, _pack(entry[1])]
     callback_id = 0
     callback_arity = -1
-    if block:
-      callback_id = _register_callback(block)
-      callback_arity = _block_arity(block)
-    _unpack(_send(@handle, name, packed_args, packed_kwargs, callback_id, callback_arity, _dispatch, _encode_callback))
+    if &block:
+      callback_id = _register_callback((&block))
+      callback_arity = _block_arity((&block))
+    _unpack(_send(@handle, name, packed_args, packed_kwargs, callback_id, callback_arity, (&_dispatch), (&_encode_callback)))
 
   def call(*args, **kwargs, &block): invoke("__call__", *args, **kwargs, &block)
   def getattr(name): _unpack(_get(@handle, name.to_str))
@@ -100,12 +100,12 @@ def _register_callback(block):
   _callback_mutex.synchronize:
     _callback_counter[0] = _callback_counter[0] + 1
     id = _callback_counter[0]
-    _callbacks[id] = block
+    _callbacks[id] = &block
     id
 
 def _dispatch(id, packets):
   block = _callback_mutex.synchronize: _callbacks[id]
-  raise LocalJumpError("Ruby callback has been released") unless block
+  raise LocalJumpError("Ruby callback has been released") unless &block
   values = packets.map |packet|: _unpack(packet)
   _pack(block(*values))
 

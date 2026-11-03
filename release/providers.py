@@ -45,18 +45,19 @@ for i,include in enumerate(facts['includes']):
 # Link against the same install-name-adjusted bytes as the runtime descriptor.
 slib=sdk/'lib'/libname;slib.parent.mkdir(exist_ok=True);shutil.copy2(lib,slib)
 abi=name+'-'+facts['version']+'-'+target
-sdk_id='sha256:'+hashlib.sha256(''.join(str(p.relative_to(sdk))+hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(sdk.rglob('*')) if p.is_file() and p.name not in ['sputnik.toml','checksums.sha256']).encode()).hexdigest()
+sdk_id='sha256:'+hashlib.sha256(''.join(str(p.relative_to(sdk))+hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(sdk.rglob('*')) if p.is_file() and p.name not in ['sputnik.build.json','checksums.sha256']).encode()).hexdigest()
 requirements=[]
 for kind,d,build in [('runtime',runtime,runtime_id),('sdk',sdk,sdk_id)]:
  identity=name if kind=='runtime' else name+'-sdk'
- files=[p.relative_to(d).as_posix() for p in sorted(d.rglob('*')) if p.is_file() and p.name not in ['sputnik.toml','checksums.sha256']]
- lines=['schema = "sputnik.package-manifest.v1"','[package]','kind = "native"','name = "local-'+identity+'"','version = "'+facts['version']+'"','[target]','os = '+Q('macos' if mac else 'linux'),'arch = '+Q('aarch64' if mac else 'x86_64'),'[[native_providers]]','id = '+Q(identity),'kind = '+Q(kind),'version = '+Q(facts['version']),'abi = '+Q(abi),'build_id = '+Q(build)]
- if kind=='runtime':
-  lines+=['library_dirs = ["lib"]','link_libraries = '+Q([facts['link']]),'files = '+Q(files),'[[native_providers.libraries]]','path = '+Q('lib/'+libname),'role = "dependency"']
- else:
-  lines+=['runtime_build_id = '+Q(runtime_id),'include_dirs = '+Q(headers),'library_dirs = ["lib"]','link_libraries = '+Q([facts['link']]),'files = '+Q(files)]
- (d/'sputnik.toml').write_text('\n'.join(lines)+'\n')
- (d/'checksums.sha256').write_text(''.join(hashlib.sha256((d/f).read_bytes()).hexdigest()+'  '+f+'\n' for f in sorted(files+['sputnik.toml'])))
+ files=[p.relative_to(d).as_posix() for p in sorted(d.rglob('*')) if p.is_file() and p.name not in ['sputnik.build.json','checksums.sha256']]
+ item=dict(id=identity,kind=kind,version=facts['version'],abi=abi,build_id=build,
+           library_dirs=['lib'],link_libraries=[facts['link']],files=files)
+ if kind=='runtime':item['libraries']=[dict(path='lib/'+libname,role='dependency')]
+ else:item.update(runtime_build_id=runtime_id,include_dirs=headers)
+ descriptor=dict(requires={'sputnik': '>=1.0.0 <2.0.0'},schema='sputnik.build.v1',kind='native',name='local-'+identity,version=facts['version'],
+                 files=files,target=dict(os='macos' if mac else 'linux',arch='aarch64' if mac else 'x86_64'),native_providers=[item])
+ (d/'sputnik.build.json').write_text(json.dumps(descriptor,indent=2)+'\n')
+ (d/'checksums.sha256').write_text(''.join(hashlib.sha256((d/f).read_bytes()).hexdigest()+'  '+f+'\n' for f in sorted(files+['sputnik.build.json'])))
  req=dict(id=identity,kind=kind,version=facts['version'],abi=abi,build_id=build,provider='external')
  if kind=='sdk':req['runtime']=name
  else:req['libraries']=[libname]
@@ -66,5 +67,5 @@ print('SPUTNIK_NATIVE_PROVIDERS='+str(runtime)+':'+str(sdk))
 
 bridge=Path(__file__).resolve().parents[1].name
 extension=dict(name=bridge,language='c++',sources=['native/'+bridge+'.cpp'],requirements=[r['id'] for r in requirements],defines=['SPUTNIK_'+bridge.upper()+'_ERROR_NAMESPACE="Slowpilot.'+bridge.capitalize()+'"'])
-cfg=dict(name=bridge,version='0.1.0',root=bridge,sources=['src/*.s'],native=[extension],native_requirements=requirements,build_include_dirs=facts['includes'],build_library_dirs=[str(sdk/'lib')],build_link_libraries=[facts['link']],install_names={facts['library']:'@rpath/'+libname})
+cfg=dict(name=bridge,version='0.1.1',root=bridge,sources=['src/*.s'],native=[extension],native_requirements=requirements,build_include_dirs=facts['includes'],build_library_dirs=[str(sdk/'lib')],build_link_libraries=[facts['link']],install_names={facts['library']:'@rpath/'+libname})
 (root.parent/'release-config.json').write_text(json.dumps(cfg,indent=2)+'\n')

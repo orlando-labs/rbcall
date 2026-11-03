@@ -27,12 +27,13 @@ extension = dict(name=NAME, language='c++', sources=['native/' + NAME + '.cpp'],
 manifest = dict(schema='sputnik.build.v1', name=NAME, root=NAME,
                 profiles=dict(required=['core.v1', 'ffi.v1'], optional=[], forbidden=[]),
                 modules=[dict(name=NAME, path='src/' + NAME + '.s')], native_extensions=[extension])
-(ROOT / 'sputnik.build.json').write_text(json.dumps(manifest, indent=2) + '\n')
-# Package installation uses the same native build facts as consumer manifests.
-quote = lambda v: json.dumps(v, ensure_ascii=False)
-lines = ['[package]', 'name = ' + quote(NAME), 'version = "0.1.0"', 'root = ' + quote(NAME),
-         '', '[[modules]]', 'name = ' + quote(NAME), 'path = ' + quote('src/' + NAME + '.s'), '', '[[native]]']
-for key, value in extension.items():
-    lines.append(key + ' = ' + quote(value))
-(ROOT / 'sputnik.toml').write_text('\n'.join(lines) + '\n')
-print('Prepared ' + NAME + ' with ' + lib + ' in ' + facts['libdir'])
+# Native SDK/runtime descriptors retain local host paths outside the package.
+provider_root = ROOT / 'build/native-providers'
+subprocess.run([sys.executable, str(ROOT / 'release/providers.py'), '--interpreter', a.ruby, '--out', str(provider_root)], check=True)
+provider_facts = json.loads((provider_root / 'facts.json').read_text())
+requirements = provider_facts['requirements']
+extension.update(requirements=[item['id'] for item in requirements], include_dirs=[], library_dirs=[], runtime_library_dirs=[], link_libraries=[])
+manifest.pop('modules', None)
+manifest.update(version='0.1.0', source_root='src', files=['src/' + NAME + '.s', 'native/' + NAME + '.cpp', 'README.md'], native_requirements=requirements)
+(ROOT / 'sputnik.build.yaml').write_text(''.join(key + ': ' + json.dumps(value) + '\n' for key, value in manifest.items()))
+print('Prepared ' + NAME + '; bind native providers with SPUTNIK_NATIVE_PROVIDERS=' + str(provider_root / 'runtime') + ':' + str(provider_root / 'sdk'))
